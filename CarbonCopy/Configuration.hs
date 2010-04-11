@@ -8,7 +8,10 @@ module CarbonCopy.Configuration (
 import Data.ByteString.Char8 as BStr
 import Text.ParserCombinators.ReadP as R
 import Data.Char
+import Data.Maybe
 import Data.List
+
+import Prelude as P
 
 data Option = Path String | Email String | Unparsed String
 
@@ -19,23 +22,24 @@ defaultConfiguration :: String -> Configuration
 defaultConfiguration email = Configuration [Path ".ccheader", Email email]
 
 loadConfiguration :: ByteString -> Configuration
-loadConfiguration content = Configuration ( Prelude.foldl (parseLine) [] $ BStr.lines content )
+loadConfiguration content = Configuration ( P.foldl (parseLine) [] $ BStr.lines content )
     where 
         parseLine :: [Option] -> ByteString -> [Option]
-        parseLine acc line = let parsed = readP_to_S extractNameValue $ unpack line
-                                in case parsed of
+        parseLine acc line = case parsedLine of
                                     [(nv@(name,value),_)]   -> handleNv nv
                                     [(nv@(name,value),_),_] -> handleNv nv
-                                    unparsed                -> (Unparsed $ BStr.unpack line):acc
-                             where handleNv (name,value) =
-                                    case name of
-                                        "cc_header_file"    -> (Path value):acc
-                                        "originator_email"  -> (Email value):acc
-                                        _                   -> acc
+                                    unparsed                -> (Unparsed unpackedLine):acc
+                             where  handleNv (name,value) =
+                                        case name of
+                                            "cc_header_file"    -> (Path value):acc
+                                            "originator_email"  -> (Email value):acc
+                                            _                   -> acc
+                                    unpackedLine = BStr.unpack line
+                                    parsedLine = readP_to_S extractNameValue unpackedLine
 
 extractNameValue :: ReadP (String, String)
 extractNameValue = do
-    name <- munch ( not . (\c -> isSpace c || c `Prelude.elem` "#="))
+    name <- munch ( not . (\c -> isSpace c || c `P.elem` "#="))
     skipSpaces
     char '='
     skipSpaces
@@ -45,19 +49,13 @@ extractNameValue = do
 
 
 getPath :: Configuration -> Maybe String
-getPath (Configuration xs) = extractPath xs
-                             where extractPath [] = Nothing
-                                   extractPath ((Path value):xs') = Just value
-                                   extractPath (_:xs') = extractPath xs'
+getPath (Configuration xs) = listToMaybe [value | Path value <- xs]
 
 getEmail :: Configuration -> Maybe String
-getEmail (Configuration xs) = extractEmail xs
-                               where extractEmail [] = Nothing
-                                     extractEmail ((Email value):xs') = Just value
-                                     extractEmail (_:xs') = extractEmail xs'
+getEmail (Configuration xs) = listToMaybe [email | Email email <- xs]
 
 instance Show Configuration where
-    show (Configuration xs) = Prelude.foldl ( flip ((++) . (++ "\n") . show) ) "" xs
+    show (Configuration xs) = P.foldl ( flip ((++) . (++ "\n") . show) ) "" xs
 
 instance Show Option where
     show (Email value) = "email => " ++ value

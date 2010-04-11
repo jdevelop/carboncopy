@@ -14,27 +14,25 @@ import System.FilePath.Posix
 import Data.ByteString.Char8 as BStr
 import Data.Maybe
 
+import Monad
+
 emptyStr = BStr.pack ""
 
 main = do
     home <- getEnv "HOME"
     args <- getArgs
-    let configFileName = getRelFileName home ".ccrc"
+    let configFileName = home </> ".ccrc"
     configFileExists <- fileExists configFileName
-    if not configFileExists
-        then error $ "Configuration file " ++ configFileName ++ " not found"
-        else return ()
-    configuration <- BStr.readFile configFileName >>= return . loadConfiguration
-    let storageFileName = getRelFileName home $ fromJust . getPath $ configuration
+    unless configFileExists $ error $ "Configuration file " ++ configFileName ++ " not found"
+    configuration <- fmap loadConfiguration $ BStr.readFile configFileName
+    let storageFileName = home </> ( fromJust . getPath $ configuration )
         storage = fileStorage storageFileName
         email = fromJust . getEmail $ configuration
     case args of
         ("init":folders) -> do 
             let foldersLength = Prelude.length folders
             storageFileExists <- fileExists storageFileName
-            if not storageFileExists
-                then BStr.writeFile storageFileName emptyStr
-                else return ()
+            unless storageFileExists $ BStr.writeFile storageFileName emptyStr
             mapM_ (initMailFolder storage email foldersLength ) $ Prelude.zip folders [1..]
         [] -> BStr.getContents >>= handleEmail storage email
         otherwise -> error "Wrong arguments"
@@ -43,13 +41,10 @@ main = do
 fileExists :: FilePath -> IO (Bool)
 fileExists = vDoesFileExist SystemFS
 
-getRelFileName :: FilePath -> FilePath -> FilePath
-getRelFileName = (</>)
-
 initMailFolder :: Storage StrHeader -> String -> Int -> (FilePath , Int) -> IO ()
-initMailFolder storage email count (mailStorage, idx) = 
-    ( Prelude.putStrLn $ "Processing storage " ++ show idx ++ " at " ++ mailStorage ) 
-    >> storageInit email mailStorage storage
+initMailFolder storage email count (mailStorage, idx) = do
+    Prelude.putStrLn $ "Processing storage " ++ show idx ++ " of " ++ show count ++ " at " ++ mailStorage
+    storageInit email mailStorage storage
 
 handleEmail :: Storage StrHeader -> String -> ByteString -> IO ()
 handleEmail storage email content = do
@@ -59,9 +54,7 @@ handleEmail storage email content = do
                                 messageMatches <- saveMatchingChain storage chain
                                 if  hdrsMatchFound || messageMatches
                                     then do 
-                                            if (hdrsMatchFound) 
-                                                then hdrAdd storage $ current chain
-                                                else return ()
+                                            unless hdrsMatchFound $ hdrAdd storage $ current chain
                                             System.exitWith ExitSuccess
                                     else do System.exitWith $ ExitFailure 1
         otherwise       -> System.exitWith $ ExitFailure 2

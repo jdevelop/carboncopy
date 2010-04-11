@@ -5,6 +5,8 @@ import System.IO.HVFS
 import System.FilePath.Posix
 import Data.ByteString.Char8 as BStr
 
+import Prelude as P
+
 type EmailHandler = ByteString -> IO ()
 
 (?:) :: IO (Bool) -> ( IO (), IO () ) -> IO ()
@@ -14,9 +16,8 @@ type EmailHandler = ByteString -> IO ()
 (?&) cond act = cond ?: ( act, return () )
 
 visitEmailsRecursively :: FilePath -> EmailHandler -> IO ()
-visitEmailsRecursively dir emailHandler = do
-    files <- vGetDirectoryContents SystemFS dir
-    mapM_ processDirectory $ Prelude.filter (not . flip Prelude.elem [".",".."] ) files
+visitEmailsRecursively dir emailHandler =
+    vGetDirectoryContents SystemFS dir >>= mapM_ processDirectory . P.filter (not . flip P.elem [".",".."] )
         where 
             processDirectory _path = fileExists ?: 
                                         ( BStr.readFile filePath >>= emailHandler, 

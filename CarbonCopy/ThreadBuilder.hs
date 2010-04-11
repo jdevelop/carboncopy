@@ -29,13 +29,14 @@ headerVal name = do
 
 
 getChain :: ByteString -> Maybe MsgidChain
-getChain content = let headers = extractHeaders content ( (headerVal msg_id_hdr) +++ (headerVal in_reply_to_hdr) )
-                    in case headers of
+getChain content = case headers of
                         (h1:h2:[]) -> Just chain
                             where
                                 chain | name h1 == msg_id_hdr = Chain {current = h1, previous = h2 }
                                       | otherwise = Chain {current = h2, previous = h1 }
                         _          -> Nothing
+    where 
+        headers = extractHeaders content ( (headerVal msg_id_hdr) +++ (headerVal in_reply_to_hdr) )
 
 
 saveMatchingChain :: Storage (Header keyT valueT) -> Chain keyT valueT -> IO (Bool)

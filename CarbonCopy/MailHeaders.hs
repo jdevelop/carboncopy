@@ -9,6 +9,7 @@ module CarbonCopy.MailHeaders (
     in_reply_to_hdr
     ) where
 
+import Prelude as P
 import Data.Char
 import Data.ByteString.Char8 as BStr hiding (concatMap, takeWhile)
 import Text.ParserCombinators.ReadP as R
@@ -26,11 +27,9 @@ msg_id_hdr      =   "message-id"
 in_reply_to_hdr =   "in-reply-to"
 from_hdr        =   "from"
 
-emptyLn = BStr.pack "" :: ByteString
-
 extractHeaders :: ByteString -> HeaderMatcher -> [StrHeader]
-extractHeaders src matcher = concatMap parse $ takeWhile ( /= emptyLn) lines
+extractHeaders src matcher = concatMap parse . takeWhile ( /= BStr.empty) $ lines
                              where
                                 lines = BStr.lines src
-                                parse l = Prelude.map fst $ readP_to_S matcher line
-                                    where line = (BStr.unpack . BStr.map (toLower) $ l) ++ "\n"
+                                parse l = P.map fst $ readP_to_S matcher line
+                                    where line = BStr.unpack ( BStr.map (toLower) l ) ++ "\n"

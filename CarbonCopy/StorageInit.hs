@@ -3,6 +3,8 @@ module CarbonCopy.StorageInit (
     matchFromHeader
     ) where
 
+import Prelude as P
+import Control.Monad
 import Data.Maybe
 import Data.List as L
 import CarbonCopy.EmailStorage
@@ -24,24 +26,19 @@ processHeader email storage = \content -> do
                                 then do
                                     let fromMsgId = current myChain
                                     fromAlreadyExistsInStorage <- hdrExists storage fromMsgId
-                                    if not fromAlreadyExistsInStorage
-                                        then
-                                            hdrAdd storage fromMsgId
-                                        else
-                                            return ()
-                                else  saveMatchingChain storage myChain >> return ()
+                                    when (not fromAlreadyExistsInStorage) $ hdrAdd storage fromMsgId
+                                else saveMatchingChain storage myChain >> return ()
         otherwise       -> return ()
+            
 
 matchFromHeader :: ByteString -> String -> ( Maybe MsgidChain, Bool )
-matchFromHeader content email = 
-    let headers = visitHeader email content
-        hdrsMatchFound = Prelude.foldr hdrMatch False $ headers
+matchFromHeader content email = ( chain, hdrsMatchFound )
+    where 
+        headers = visitHeader email content
+        hdrsMatchFound = P.foldr hdrMatch False $ headers
         chain = prepareChain headers
-    in
-        ( chain, hdrsMatchFound )
-        where
-            hdrMatch (Header name value) acc    | name == from_hdr && substringExists email value = True
-                                                | otherwise = acc
+        hdrMatch (Header name value) acc | name == from_hdr && email `L.isInfixOf` value = True
+                                         | otherwise = acc
 
 
 findHeaderByName :: String -> [StrHeader] -> Maybe (StrHeader)
@@ -59,13 +56,6 @@ visitHeader email msgData = extractHeaders msgData (
                                     TB.headerVal msg_id_hdr +++ 
                                     TB.headerVal in_reply_to_hdr 
                                     )
-
-substringExists :: String -> String -> Bool
-substringExists src trg = not . BStr.null $ y
-                          where
-                            src' = BStr.pack src
-                            trg' = BStr.pack trg
-                            (x,y) = BStr.breakSubstring src' trg'
 
 headerValue :: String -> ReadP StrHeader
 headerValue hdrName = do
