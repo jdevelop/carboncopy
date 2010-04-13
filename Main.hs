@@ -14,7 +14,8 @@ import System.FilePath.Posix
 import Data.ByteString.Char8 as BStr
 import Data.Maybe
 
-import Monad
+import Control.Monad.IfElse
+import Control.Monad
 
 emptyStr = BStr.pack ""
 
@@ -22,8 +23,7 @@ main = do
     home <- getEnv "HOME"
     args <- getArgs
     let configFileName = home </> ".ccrc"
-    configFileExists <- fileExists configFileName
-    unless configFileExists $ error $ "Configuration file " ++ configFileName ++ " not found"
+    unlessM ( fileExists configFileName) $ error $ "Configuration file " ++ configFileName ++ " not found"
     configuration <- fmap loadConfiguration $ BStr.readFile configFileName
     let storageFileName = home </> ( fromJust . getPath $ configuration )
         storage = fileStorage storageFileName
@@ -31,8 +31,7 @@ main = do
     case args of
         ("init":folders) -> do 
             let foldersLength = Prelude.length folders
-            storageFileExists <- fileExists storageFileName
-            unless storageFileExists $ BStr.writeFile storageFileName emptyStr
+            unlessM (fileExists storageFileName) $ BStr.writeFile storageFileName emptyStr
             mapM_ (initMailFolder storage email foldersLength ) $ Prelude.zip folders [1..]
         [] -> BStr.getContents >>= handleEmail storage email
         otherwise -> error "Wrong arguments"
@@ -47,14 +46,14 @@ initMailFolder storage email count (mailStorage, idx) = do
     storageInit email mailStorage storage
 
 handleEmail :: Storage StrHeader -> String -> ByteString -> IO ()
-handleEmail storage email content = do
-    let ( chain, hdrsMatchFound ) = matchFromHeader content email
-    case chain of
-        (Just chain)    -> do 
-                                messageMatches <- saveMatchingChain storage chain
-                                if  hdrsMatchFound || messageMatches
-                                    then do 
-                                            unless hdrsMatchFound $ hdrAdd storage $ current chain
-                                            System.exitWith ExitSuccess
-                                    else do System.exitWith $ ExitFailure 1
-        otherwise       -> System.exitWith $ ExitFailure 2
+handleEmail storage email content = handleEmail' chain
+    where ( chain, ownerEmail ) = matchFromHeader content email
+          handleEmail' (Just chain) = handleEmail'' ownerEmail
+             where
+                  handleEmail'' True = do hdrAdd storage . current $ chain    
+                                          System.exitWith ExitSuccess
+                  handleEmail'' _ = do existsInStorage <- saveMatchingChain storage chain
+                                       if existsInStorage
+                                          then do System.exitWith ExitSuccess
+                                          else do System.exitWith $ ExitFailure 1
+          handleEmail' _ =  System.exitWith $ ExitFailure 2

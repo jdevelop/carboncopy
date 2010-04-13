@@ -5,6 +5,7 @@ module CarbonCopy.StorageInit (
 
 import Prelude as P
 import Control.Monad
+import Control.Monad.IfElse
 import Data.Maybe
 import Data.List as L
 import CarbonCopy.EmailStorage
@@ -19,34 +20,33 @@ storageInit email rootDir storage = visitEmailsRecursively rootDir ( processHead
 
 
 processHeader :: String -> Storage StrHeader -> EmailHandler
-processHeader email storage = \content -> do
-    let (chain, hdrsMatchFound) = matchFromHeader content email
-    case chain of
-        (Just myChain)  -> if hdrsMatchFound
-                                then do
-                                    let fromMsgId = current myChain
-                                    fromAlreadyExistsInStorage <- hdrExists storage fromMsgId
-                                    when (not fromAlreadyExistsInStorage) $ hdrAdd storage fromMsgId
-                                else saveMatchingChain storage myChain >> return ()
-        otherwise       -> return ()
+processHeader email storage content = processHeader' chain
+    where
+        (chain, hdrsMatchFound) = matchFromHeader content email
+        processHeader' (Just myChain) = processHeader'' hdrsMatchFound
+            where
+                processHeader'' True = unlessM (storage `hdrExists` fromMsgId) $ storage `hdrAdd` fromMsgId
+                processHeader'' False = return ()
+                fromMsgId = current myChain
+        processHeader' _ = return ()
             
 
 matchFromHeader :: ByteString -> String -> ( Maybe MsgidChain, Bool )
 matchFromHeader content email = ( chain, hdrsMatchFound )
     where 
         headers = visitHeader email content
-        hdrsMatchFound = P.foldr hdrMatch False $ headers
+        hdrsMatchFound = or $ P.map hdrMatch headers
         chain = prepareChain headers
-        hdrMatch (Header name value) acc | name == from_hdr && email `L.isInfixOf` value = True
-                                         | otherwise = acc
+        hdrMatch (Header name value) = name == from_hdr && email `L.isInfixOf` value
 
 
 findHeaderByName :: String -> [StrHeader] -> Maybe (StrHeader)
 findHeaderByName hdrName = L.find ( (hdrName ==) . name )
 
 prepareChain :: [StrHeader] -> Maybe (MsgidChain)
-prepareChain hdrs = findHeaderByName msg_id_hdr hdrs >>= \msgIdHdr ->
-                    findHeaderByName in_reply_to_hdr hdrs >>= \inReplyToHdr ->
+prepareChain hdrs = do
+                    msgIdHdr <- findHeaderByName msg_id_hdr hdrs
+                    inReplyToHdr <- findHeaderByName in_reply_to_hdr hdrs
                     Just (Chain msgIdHdr inReplyToHdr)
 
 

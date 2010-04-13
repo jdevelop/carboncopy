@@ -6,6 +6,7 @@ module CarbonCopy.ThreadBuilder (
     getChain,
     MsgidChain) where
 
+import Control.Monad
 import CarbonCopy.MailHeaders
 import CarbonCopy.HeadersStorage
 import Data.Maybe
@@ -29,22 +30,20 @@ headerVal name = do
 
 
 getChain :: ByteString -> Maybe MsgidChain
-getChain content = case headers of
-                        (h1:h2:[]) -> Just chain
-                            where
-                                chain | name h1 == msg_id_hdr = Chain {current = h1, previous = h2 }
-                                      | otherwise = Chain {current = h2, previous = h1 }
-                        _          -> Nothing
+getChain content = getChain' headers
     where 
         headers = extractHeaders content ( (headerVal msg_id_hdr) +++ (headerVal in_reply_to_hdr) )
+        getChain' (h1:h2:[]) =Just chain
+            where
+                chain | name h1 == msg_id_hdr = Chain {current = h1, previous = h2 }
+                      | otherwise = Chain {current = h2, previous = h1 }
+        getChain' _          = Nothing
 
 
 saveMatchingChain :: Storage (Header keyT valueT) -> Chain keyT valueT -> IO (Bool)
 saveMatchingChain storage 
                   ( Chain { current=myCurrent, previous=myPrevious } ) = do
-    prevHdrExists <- hdrExists storage myPrevious
-    currHdrExists <- hdrExists storage myCurrent
-    if prevHdrExists && not currHdrExists
-        then do hdrAdd storage myCurrent 
-                return (True)
-        else return ( currHdrExists )
+    prevHdrExists <- storage `hdrExists` myPrevious
+    currHdrExists <- storage `hdrExists` myCurrent
+    when (prevHdrExists && not currHdrExists) $ storage `hdrAdd` myCurrent
+    return ( prevHdrExists || currHdrExists )
