@@ -33,16 +33,19 @@ main = do
 processArgs :: Opts -> [String] -> IO ()
 processArgs opts args = 
     case args of
-        ("init":folders) -> do
-            let foldersLength = P.length folders
-            unlessM (fileExists storageFileName' ) $ BStr.writeFile storageFileName' emptyStr
-            mapM_ (initMailFolder storage' email' foldersLength ) $ P.zip folders [1..]
-        [] -> BStr.getContents >>= handleEmail storage' email' >>= processCCState
-        _  -> usage
+        ("init":folders)    -> initPassedFolders folders
+        []                  -> handlePassedEmail
+        _                   -> usage
     where
         email'           = email opts
         storage'         = storage opts
         storageFileName' = storageFileName opts
+        initPassedFolders folders = do
+            let foldersLength = P.length folders
+            unlessM (fileExists storageFileName' ) $ BStr.writeFile storageFileName' emptyStr
+            mapM_ (initMailFolder storage' email' foldersLength ) $ P.zip folders [1..]
+        handlePassedEmail = BStr.getContents >>= handleEmail storage' email' >>= processCCState
+            
 
 
 prepareConfig :: IO (Opts)
