@@ -19,6 +19,8 @@ import Control.Monad
 
 emptyStr = BStr.pack ""
 
+data CCState = Ok | NotFound | NoChain deriving ( Enum )
+
 main = do
     home <- getEnv "HOME"
     args <- getArgs
@@ -33,8 +35,12 @@ main = do
             let foldersLength = Prelude.length folders
             unlessM (fileExists storageFileName) $ BStr.writeFile storageFileName emptyStr
             mapM_ (initMailFolder storage email foldersLength ) $ Prelude.zip folders [1..]
-        [] -> BStr.getContents >>= handleEmail storage email
+        [] -> BStr.getContents >>= handleEmail storage email >>= processCCState
         otherwise -> error "Wrong arguments"
+
+
+processCCState :: CCState -> IO ()
+processCCState = System.exitWith . ExitFailure . fromEnum
 
 
 fileExists :: FilePath -> IO (Bool)
@@ -45,7 +51,7 @@ initMailFolder storage email count (mailStorage, idx) = do
     Prelude.putStrLn $ "Processing storage " ++ show idx ++ " of " ++ show count ++ " at " ++ mailStorage
     storageInit email mailStorage storage
 
-handleEmail :: Storage StrHeader -> String -> ByteString -> IO ()
+handleEmail :: Storage StrHeader -> String -> ByteString -> IO ( CCState )
 handleEmail storage email content = handleEmail' chain
     where ( chain, ownerEmail ) = matchFromHeader content email
           handleEmail' (Just chain) = handleEmail'' ownerEmail
@@ -54,6 +60,6 @@ handleEmail storage email content = handleEmail' chain
                                           System.exitWith ExitSuccess
                   handleEmail'' _ = do existsInStorage <- saveMatchingChain storage chain
                                        if existsInStorage
-                                          then do System.exitWith ExitSuccess
-                                          else do System.exitWith $ ExitFailure 1
-          handleEmail' _ =  System.exitWith $ ExitFailure 2
+                                          then return ( Ok )
+                                          else return ( NotFound )
+          handleEmail' _ =  return ( NoChain )
