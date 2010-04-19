@@ -23,22 +23,38 @@ emptyStr = BStr.pack ""
 
 data CCState = Ok | NotFound | NoChain deriving ( Enum )
 
+data Opts = Opts { email, storageFileName :: String, storage :: Storage StrHeader }
+
 main = do
+    opts <- prepareConfig
+    getArgs >>= (processArgs opts)
+
+
+processArgs :: Opts -> [String] -> IO ()
+processArgs opts args = 
+    case args of
+        ("init":folders) -> do
+            let foldersLength = P.length folders
+            unlessM (fileExists storageFileName' ) $ BStr.writeFile storageFileName' emptyStr
+            mapM_ (initMailFolder storage' email' foldersLength ) $ P.zip folders [1..]
+        [] -> BStr.getContents >>= handleEmail storage' email' >>= processCCState
+        _  -> usage
+    where
+        email'           = email opts
+        storage'         = storage opts
+        storageFileName' = storageFileName opts
+
+
+prepareConfig :: IO (Opts)
+prepareConfig = do
     home <- getEnv "HOME"
-    args <- getArgs
     let configFileName = home </> ".ccrc"
     unlessM ( fileExists configFileName) $ error $ "Configuration file " ++ configFileName ++ " not found"
     configuration <- fmap loadConfiguration $ BStr.readFile configFileName
     let storageFileName = home </> ( fromJust . getPath $ configuration )
         storage = fileStorage storageFileName
         email = fromJust . getEmail $ configuration
-    case args of
-        ("init":folders) -> do 
-            let foldersLength = P.length folders
-            unlessM (fileExists storageFileName) $ BStr.writeFile storageFileName emptyStr
-            mapM_ (initMailFolder storage email foldersLength ) $ P.zip folders [1..]
-        [] -> BStr.getContents >>= handleEmail storage email >>= processCCState
-        otherwise -> usage
+    return ( Opts email storageFileName storage )
 
 
 usage :: IO ()
