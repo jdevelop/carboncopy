@@ -25,16 +25,16 @@ processHeader email storage content = processHeader' chain
         (chain, hdrsMatchFound) = matchFromHeader content email
         processHeader' (Just myChain) = processHeader'' hdrsMatchFound
             where
+                fromMsgId = current myChain
                 processHeader'' True = unlessM (storage `hdrExists` fromMsgId) $ storage `hdrAdd` fromMsgId
                 processHeader'' False = return ()
-                fromMsgId = current myChain
         processHeader' _ = return ()
             
 
 matchFromHeader :: ByteString -> String -> ( Maybe MsgidChain, Bool )
 matchFromHeader content email = ( chain, hdrsMatchFound )
     where 
-        headers = visitHeader email content
+        headers = visitHeader content
         hdrsMatchFound = or $ P.map hdrMatch headers
         chain = prepareChain headers
         hdrMatch (Header name value) = name == from_hdr && email `L.isInfixOf` value
@@ -50,12 +50,12 @@ prepareChain hdrs = do
                     Just (Chain msgIdHdr inReplyToHdr)
 
 
-visitHeader :: String -> ByteString -> [StrHeader]
-visitHeader email msgData = extractHeaders msgData ( 
+visitHeader :: ByteString -> [StrHeader]
+visitHeader = flip extractHeaders ( 
                                     headerValue from_hdr +++ 
                                     TB.headerVal msg_id_hdr +++ 
                                     TB.headerVal in_reply_to_hdr 
-                                    )
+                                  )
 
 headerValue :: String -> ReadP StrHeader
 headerValue hdrName = do

@@ -14,10 +14,10 @@ data Storage headerT  = HeadersStorage {
 }
 
 hdrExists :: Storage headerT -> headerT -> IO (Bool)
-hdrExists HeadersStorage { exists = myExists } = myExists
+hdrExists = exists
 
 hdrAdd :: Storage headerT -> headerT -> IO ()
-hdrAdd HeadersStorage { add = myAdd } = myAdd
+hdrAdd = add
 
 fileStorage :: FilePath -> Storage StrHeader
 fileStorage path = HeadersStorage {
