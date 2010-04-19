@@ -17,6 +17,8 @@ import Data.Maybe
 import Control.Monad.IfElse
 import Control.Monad
 
+import Prelude as P
+
 emptyStr = BStr.pack ""
 
 data CCState = Ok | NotFound | NoChain deriving ( Enum )
@@ -32,11 +34,23 @@ main = do
         email = fromJust . getEmail $ configuration
     case args of
         ("init":folders) -> do 
-            let foldersLength = Prelude.length folders
+            let foldersLength = P.length folders
             unlessM (fileExists storageFileName) $ BStr.writeFile storageFileName emptyStr
-            mapM_ (initMailFolder storage email foldersLength ) $ Prelude.zip folders [1..]
+            mapM_ (initMailFolder storage email foldersLength ) $ P.zip folders [1..]
         [] -> BStr.getContents >>= handleEmail storage email >>= processCCState
-        otherwise -> error "Wrong arguments"
+        otherwise -> usage
+
+
+usage :: IO ()
+usage = do
+    progName <- getProgName
+    P.putStrLn $ "Usage " ++ progName ++ " [init maildir1 maildir2 maildir3 ...] [ < content ]"
+    P.putStrLn $ "\twhere 'init' will initialize header index with messages from given maildirs"
+    P.putStrLn $ "\twith no arguments it will read message from stdin and attempt to recognize headers within it"
+    P.putStrLn $ "\n\nExit codes:"
+    P.putStrLn $ "\t0\t- reply to known thread was found, header was added to the storage"
+    P.putStrLn $ "\t1\t- current email does not contain either e-mail address from configuration and is not a reply to a known thread"
+    P.putStrLn $ "\t2\t- no message headers were recognized"
 
 
 processCCState :: CCState -> IO ()
@@ -48,7 +62,7 @@ fileExists = vDoesFileExist SystemFS
 
 initMailFolder :: Storage StrHeader -> String -> Int -> (FilePath , Int) -> IO ()
 initMailFolder storage email count (mailStorage, idx) = do
-    Prelude.putStrLn $ "Processing storage " ++ show idx ++ " of " ++ show count ++ " at " ++ mailStorage
+    P.putStrLn $ "Processing storage " ++ show idx ++ " of " ++ show count ++ " at " ++ mailStorage
     storageInit email mailStorage storage
 
 handleEmail :: Storage StrHeader -> String -> ByteString -> IO ( CCState )
