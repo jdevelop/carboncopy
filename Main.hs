@@ -73,7 +73,10 @@ usage = do
 
 
 processCCState :: CCState -> IO ()
-processCCState = System.exitWith . ExitFailure . fromEnum
+processCCState state | stateCode == 0 = System.exitWith ExitSuccess
+                     | otherwise      = System.exitWith $ ExitFailure stateCode
+    where
+        stateCode = fromEnum state
 
 
 fileExists :: FilePath -> IO (Bool)
