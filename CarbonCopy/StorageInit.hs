@@ -17,10 +17,14 @@ processHeader :: String -> Storage StrHeader -> EmailHandler
 processHeader email storage content = processHeader' chain
     where
         (chain, hdrsMatchFound) = matchFromHeader content email
-        processHeader' (Just myChain) = processHeader'' hdrsMatchFound
+        processHeader' (Just (Chain {current=fromMsgId, previous=inReplyTo})) = processHeader'' hdrsMatchFound
             where
-                fromMsgId = current myChain
-                inReplyTo = previous myChain
                 processHeader'' True = unlessM (storage `hdrExists` fromMsgId) $ storage `hdrAdd` fromMsgId
-                processHeader'' False = whenM (storage `hdrExists` inReplyTo) $ storage `hdrAdd` fromMsgId
+                processHeader'' False = whenM (storage `hdrExists` inReplyTo) $ 
+                                            unlessM (storage `hdrExists` fromMsgId) $ 
+                                                storage `hdrAdd` fromMsgId
+        processHeader' (Just (Root {current=fromMsgId})) = processHeader'' hdrsMatchFound
+            where
+                processHeader'' True = unlessM (storage `hdrExists` fromMsgId) $ storage `hdrAdd` fromMsgId
+                processHeader'' False = return ()
         processHeader' _ = return ()

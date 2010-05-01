@@ -28,6 +28,7 @@ saveMatchingChain storage
     currHdrExists <- storage `hdrExists` myCurrent
     when (prevHdrExists && not currHdrExists) $ storage `hdrAdd` myCurrent
     return ( prevHdrExists || currHdrExists )
+saveMatchingChain storage _ = return False
 
 findHeaderByName :: String -> [StrHeader] -> Maybe (StrHeader)
 findHeaderByName hdrName = L.find ( (hdrName ==) . name )
@@ -41,8 +42,6 @@ prepareChain hdrs = processNextHeader $ findHeaderByName in_reply_to_hdr hdrs
         processNextHeader Nothing = do
             msgIdHdr <- findHeaderByName msg_id_hdr hdrs
             Just (Root msgIdHdr)
-            
-            
 
 matchFromHeader :: ByteString -> String -> ( Maybe MsgidChain, Bool )
 matchFromHeader content email = ( chain, hdrsMatchFound )
