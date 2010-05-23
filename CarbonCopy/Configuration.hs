@@ -9,9 +9,7 @@ import Data.ByteString.Char8 as BStr
 import Text.ParserCombinators.ReadP as R
 import Data.Char
 import Data.Maybe
-import Data.List
-
-import Prelude as P
+import Data.List as L
 
 data Option = Path String | Email String | Unparsed String
 
@@ -22,7 +20,7 @@ defaultConfiguration :: String -> Configuration
 defaultConfiguration email = Configuration [Path ".ccheader", Email email]
 
 loadConfiguration :: ByteString -> Configuration
-loadConfiguration content = Configuration ( P.foldl parseLine [] $ BStr.lines content )
+loadConfiguration content = Configuration ( L.foldl' parseLine [] $ BStr.lines content )
     where 
         parseLine :: [Option] -> ByteString -> [Option]
         parseLine acc line = case parsedLine of
@@ -39,7 +37,7 @@ loadConfiguration content = Configuration ( P.foldl parseLine [] $ BStr.lines co
 
 extractNameValue :: ReadP (String, String)
 extractNameValue = do
-    name <- munch ( not . (\c -> isSpace c || c `P.elem` "#="))
+    name <- munch ( not . (\c -> isSpace c || c `L.elem` "#="))
     skipSpaces
     char '='
     skipSpaces
@@ -55,7 +53,7 @@ getEmail :: Configuration -> Maybe String
 getEmail (Configuration xs) = listToMaybe [email | Email email <- xs]
 
 instance Show Configuration where
-    show (Configuration xs) = P.foldl ( flip ((++) . (++ "\n") . show) ) "" xs
+    show (Configuration xs) = L.foldl' ( flip ((++) . (++ "\n") . show) ) "" xs
 
 instance Show Option where
     show (Email value) = "email => " ++ value
