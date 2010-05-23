@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -XTypeSynonymInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 module CarbonCopy.MailHeaders (
     Header(..),
     StrHeader,
@@ -32,4 +32,4 @@ extractHeaders src matcher = concatMap parse . takeWhile ( /= BStr.empty) $ line
                              where
                                 lines = BStr.lines src
                                 parse l = P.map fst $ readP_to_S matcher line
-                                    where line = BStr.unpack ( BStr.map (toLower) l ) ++ "\n"
+                                    where line = BStr.unpack ( BStr.map toLower l ) ++ "\n"

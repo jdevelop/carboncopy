@@ -27,7 +27,7 @@ data Opts = Opts { email, storageFileName :: String, storage :: Storage StrHeade
 
 main = do
     opts <- prepareConfig
-    getArgs >>= (processArgs opts)
+    getArgs >>= processArgs opts
 
 
 processArgs :: Opts -> [String] -> IO ()
@@ -48,7 +48,7 @@ processArgs opts args =
             
 
 
-prepareConfig :: IO (Opts)
+prepareConfig :: IO Opts
 prepareConfig = do
     home <- getEnv "HOME"
     let configFileName = home </> ".ccrc"
@@ -64,12 +64,12 @@ usage :: IO ()
 usage = do
     progName <- getProgName
     P.putStrLn $ "Usage " ++ progName ++ " [init maildir1 maildir2 maildir3 ...] [ < content ]"
-    P.putStrLn $ "\twhere 'init' will initialize header index with messages from given maildirs"
-    P.putStrLn $ "\twith no arguments it will read message from stdin and attempt to recognize headers within it"
-    P.putStrLn $ "\n\nExit codes:"
-    P.putStrLn $ "\t0\t- reply to known thread was found, header was added to the storage"
-    P.putStrLn $ "\t1\t- current email does not contain either e-mail address from configuration and is not a reply to a known thread"
-    P.putStrLn $ "\t2\t- no message headers were recognized"
+    P.putStrLn "\twhere 'init' will initialize header index with messages from given maildirs"
+    P.putStrLn "\twith no arguments it will read message from stdin and attempt to recognize headers within it"
+    P.putStrLn "\n\nExit codes:"
+    P.putStrLn "\t0\t- reply to known thread was found, header was added to the storage"
+    P.putStrLn "\t1\t- current email does not contain either e-mail address from configuration and is not a reply to a known thread"
+    P.putStrLn "\t2\t- no message headers were recognized"
 
 
 processCCState :: CCState -> IO ()
@@ -79,7 +79,7 @@ processCCState state | stateCode == 0 = System.exitWith ExitSuccess
         stateCode = fromEnum state
 
 
-fileExists :: FilePath -> IO (Bool)
+fileExists :: FilePath -> IO Bool
 fileExists = vDoesFileExist SystemFS
 
 initMailFolder :: Storage StrHeader -> String -> Int -> (FilePath , Int) -> IO ()
@@ -87,7 +87,7 @@ initMailFolder storage email count (mailStorage, idx) = do
     P.putStrLn $ "Processing storage " ++ show idx ++ " of " ++ show count ++ " at " ++ mailStorage
     storageInit email mailStorage storage
 
-handleEmail :: Storage StrHeader -> String -> ByteString -> IO ( CCState )
+handleEmail :: Storage StrHeader -> String -> ByteString -> IO CCState
 handleEmail storage email content = handleEmail' chain
     where ( chain, ownerEmail ) = matchFromHeader content email
           handleEmail' (Just chain) = handleEmail'' ownerEmail
@@ -96,6 +96,6 @@ handleEmail storage email content = handleEmail' chain
                                           System.exitWith ExitSuccess
                   handleEmail'' _ = do existsInStorage <- saveMatchingChain storage chain
                                        if existsInStorage
-                                          then return ( Ok )
-                                          else return ( NotFound )
-          handleEmail' _ =  return ( NoChain )
+                                          then return Ok
+                                          else return NotFound
+          handleEmail' _ =  return NoChain

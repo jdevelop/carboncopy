@@ -9,10 +9,10 @@ import Prelude as P
 
 type EmailHandler = ByteString -> IO ()
 
-(?:) :: IO (Bool) -> ( IO (), IO () ) -> IO ()
+(?:) :: IO Bool -> ( IO (), IO () ) -> IO ()
 (?:) cond (actL,actR) = cond >>= \condExp -> if condExp then actL else actR
 
-(?&) :: IO (Bool) -> IO () -> IO ()
+(?&) :: IO Bool -> IO () -> IO ()
 (?&) cond act = cond ?: ( act, return () )
 
 visitEmailsRecursively :: FilePath -> EmailHandler -> IO ()

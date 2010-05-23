@@ -22,17 +22,17 @@ defaultConfiguration :: String -> Configuration
 defaultConfiguration email = Configuration [Path ".ccheader", Email email]
 
 loadConfiguration :: ByteString -> Configuration
-loadConfiguration content = Configuration ( P.foldl (parseLine) [] $ BStr.lines content )
+loadConfiguration content = Configuration ( P.foldl parseLine [] $ BStr.lines content )
     where 
         parseLine :: [Option] -> ByteString -> [Option]
         parseLine acc line = case parsedLine of
                                     [(nv@(name,value),_)]   -> handleNv nv
                                     [(nv@(name,value),_),_] -> handleNv nv
-                                    unparsed                -> (Unparsed unpackedLine):acc
+                                    unparsed                -> Unparsed unpackedLine:acc
                              where  handleNv (name,value) =
                                         case name of
-                                            "cc_header_file"    -> (Path value):acc
-                                            "originator_email"  -> (Email value):acc
+                                            "cc_header_file"    -> Path value:acc
+                                            "originator_email"  -> Email value:acc
                                             _                   -> acc
                                     unpackedLine = BStr.unpack line
                                     parsedLine = readP_to_S extractNameValue unpackedLine

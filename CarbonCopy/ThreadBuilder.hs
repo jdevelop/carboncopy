@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -XTypeSynonymInstances -XMultiParamTypeClasses  #-}
+{-# LANGUAGE TypeSynonymInstances, MultiParamTypeClasses #-}
 module CarbonCopy.ThreadBuilder (
     headerVal,
     saveMatchingChain,
@@ -21,7 +21,7 @@ data Chain keyT valueT = Chain { current, previous :: Header keyT valueT} | Root
 type MsgidChain = Chain String String
 
 
-saveMatchingChain :: Storage (Header keyT valueT) -> Chain keyT valueT -> IO (Bool)
+saveMatchingChain :: Storage (Header keyT valueT) -> Chain keyT valueT -> IO Bool
 saveMatchingChain storage 
                   ( Chain { current=myCurrent, previous=myPrevious } ) = do
     prevHdrExists <- storage `hdrExists` myPrevious
@@ -30,10 +30,10 @@ saveMatchingChain storage
     return ( prevHdrExists || currHdrExists )
 saveMatchingChain storage _ = return False
 
-findHeaderByName :: String -> [StrHeader] -> Maybe (StrHeader)
+findHeaderByName :: String -> [StrHeader] -> Maybe StrHeader
 findHeaderByName hdrName = L.find ( (hdrName ==) . name )
 
-prepareChain :: [StrHeader] -> Maybe (MsgidChain)
+prepareChain :: [StrHeader] -> Maybe MsgidChain
 prepareChain hdrs = processNextHeader $ findHeaderByName in_reply_to_hdr hdrs
     where 
         processNextHeader (Just inReplyToHdr) = do
@@ -47,7 +47,7 @@ matchFromHeader :: ByteString -> String -> ( Maybe MsgidChain, Bool )
 matchFromHeader content email = ( chain, hdrsMatchFound )
     where 
         headers = visitHeader content
-        hdrsMatchFound = or $ P.map hdrMatch headers
+        hdrsMatchFound = P.any hdrMatch headers
         chain = prepareChain headers
         hdrMatch (Header name value) = name == from_hdr && email `L.isInfixOf` value
 
