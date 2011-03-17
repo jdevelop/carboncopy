@@ -7,13 +7,18 @@ Name:                carboncopy
 -- The package version. See the Haskell package versioning policy
 -- (http://www.haskell.org/haskellwiki/Package_versioning_policy) for
 -- standards guiding when and how versions should be incremented.
-Version:             0.1.1
+Version:             0.1.2
 
 -- A short (one-line) description of the package.
 Synopsis:            Drop emails from threads being watched into special CC folder.
 
 -- A longer description of the package.
-Description:         See README.txt
+Description:         Filter for procmail, which allows to track message threads and 
+                     copy messages, which were sent to the threads you're watching,
+                     into separate folder. Sample .procmailrc is below:
+                        :0 cW
+                        * ? /path/to/executable
+                        /home/user/Maildir/CC/
 
 -- URL for the project homepage or repository.
 Homepage:            http://github.com/jdevelop/carboncopy
@@ -57,7 +62,7 @@ Executable carboncopy
   Main-is:             Main.hs
   
   -- Packages needed in order to build this package.
-  Build-depends:      base >= 3 && < 4,
+  Build-depends:      base >= 3 && < 5,
                       IfElse >= 0.85,
                       bytestring >= 0.9.1.4,
                       filepath >= 1.1.0.2,
