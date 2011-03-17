@@ -15,10 +15,7 @@ Synopsis:            Drop emails from threads being watched into special CC fold
 -- A longer description of the package.
 Description:         Filter for procmail, which allows to track message threads and 
                      copy messages, which were sent to the threads you're watching,
-                     into separate folder. Sample .procmailrc is below:
-                        :0 cW
-                        * ? /path/to/executable
-                        /home/user/Maildir/CC/
+                     into separate folder.
 
 -- URL for the project homepage or repository.
 Homepage:            http://github.com/jdevelop/carboncopy
